@@ -1,0 +1,1047 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tập Trung Để Bứt Phá - Trò Chơi Tương Tác Lớp 10</title>
+    <!-- Tải Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tải Google Font: Be Vietnam Pro cho tiếng Việt hiện đại, rõ nét -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Canvas Confetti cho hiệu ứng chúc mừng -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Be Vietnam Pro', sans-serif;
+            background: linear-gradient(135deg, #eff6ff 0%, #ffffff 50%, #fff7ed 100%);
+            user-select: none;
+        }
+
+        /* Hiệu ứng rung nhẹ khi trả lời sai */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-8px); }
+            40%, 80% { transform: translateX(8px); }
+        }
+        .animate-shake {
+            animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
+        }
+
+        /* Hiệu ứng nảy nhẹ khi chọn đúng */
+        @keyframes pop {
+            0% { transform: scale(0.95); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        .animate-pop {
+            animation: pop 0.25s ease-out;
+        }
+
+        /* Hiệu ứng chuyển tab mượt mà */
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        .tab-content.active {
+            display: flex;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Vùng kéo thả */
+        .drop-zone {
+            transition: all 0.2s ease;
+        }
+        .drop-zone.drag-over {
+            background-color: #dbeafe;
+            border-color: #2563eb;
+            transform: scale(1.01);
+        }
+
+        /* Tùy chỉnh thanh cuộn siêu mảnh nếu màn hình quá nhỏ */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 999px;
+        }
+    </style>
+</head>
+<body class="h-screen w-screen overflow-hidden flex flex-col text-slate-800">
+
+    <!-- HEADER & THANH ĐIỀU HƯỚNG CHÍNH (Tối ưu gọn gàng cho khung 16:9) -->
+    <header class="bg-white/90 backdrop-blur-md border-b border-blue-100 px-4 sm:px-6 py-2.5 flex flex-wrap items-center justify-between gap-2 shadow-sm shrink-0 z-20">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-orange-500 flex items-center justify-center text-white font-black text-xl shadow-md">
+                <i class="fa-solid fa-bolt"></i>
+            </div>
+            <div>
+                <h1 class="font-extrabold text-base sm:text-lg text-blue-900 leading-tight tracking-tight">TẬP TRUNG ĐỂ BỨT PHÁ</h1>
+                <p class="text-xs text-slate-500 font-medium hidden sm:block">Sinh hoạt chủ đề Lớp 10 • THPT Trần Đại Quang</p>
+            </div>
+        </div>
+
+        <!-- Các nút chuyển đổi 3 Hoạt động -->
+        <nav class="flex items-center gap-1.5 sm:gap-2 bg-slate-100 p-1.5 rounded-2xl border border-slate-200">
+            <button onclick="switchTab('game1')" id="nav-game1" class="nav-btn active flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl font-bold text-xs sm:text-sm transition-all bg-blue-600 text-white shadow-sm">
+                <span class="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center text-xs">1</span>
+                <span>Ai Nhanh Mắt Hơn</span>
+            </button>
+            <button onclick="switchTab('game2')" id="nav-game2" class="nav-btn flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl font-bold text-xs sm:text-sm transition-all text-slate-600 hover:bg-white hover:text-blue-600">
+                <span class="w-5 h-5 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center text-xs">2</span>
+                <span>Kẻ Cắp Tập Trung</span>
+            </button>
+            <button onclick="switchTab('game3')" id="nav-game3" class="nav-btn flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl font-bold text-xs sm:text-sm transition-all text-slate-600 hover:bg-white hover:text-orange-600">
+                <span class="w-5 h-5 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center text-xs">3</span>
+                <span>Tình Huống & Pomodoro</span>
+            </button>
+        </nav>
+
+        <!-- Nút bật/tắt âm thanh -->
+        <button onclick="toggleMute()" id="mute-btn" class="w-10 h-10 rounded-xl bg-slate-100 hover:bg-blue-50 text-slate-600 hover:text-blue-600 flex items-center justify-center transition-colors border border-slate-200" title="Bật / Tắt âm thanh">
+            <i class="fa-solid fa-volume-high text-base" id="mute-icon"></i>
+        </button>
+    </header>
+
+    <!-- KHU VỰC NỘI DUNG CHÍNH -->
+    <main class="flex-1 relative overflow-y-auto p-3 sm:p-5 flex flex-col justify-center items-center">
+
+        <!-- =====================================================================
+             HOẠT ĐỘNG 1: TRÒ CHƠI STROOP - AI NHANH MẮT HƠN (10 PHÚT)
+             ===================================================================== -->
+        <section id="game1" class="tab-content active w-full max-w-5xl h-full flex-col justify-between bg-white rounded-3xl shadow-xl border border-blue-100 p-4 sm:p-6">
+            <!-- Thanh thông tin trên cùng -->
+            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                <div>
+                    <span class="inline-block px-3 py-1 rounded-full bg-orange-100 text-orange-700 font-bold text-xs mb-1">HOẠT ĐỘNG 1 • KHỞI ĐỘNG (10')</span>
+                    <h2 class="text-xl sm:text-2xl font-black text-slate-800">Thử Thách Stroop: Chọn <span class="text-blue-600 underline decoration-orange-400 decoration-4">MÀU CỦA CHỮ</span></h2>
+                </div>
+
+                <!-- Đồng hồ và Điểm số -->
+                <div class="flex items-center gap-3 sm:gap-5">
+                    <div class="bg-blue-50 border border-blue-200 px-4 py-2 rounded-2xl text-center min-w-[95px]">
+                        <div class="text-[11px] font-bold text-blue-600 uppercase">Thời gian</div>
+                        <div id="stroop-timer" class="text-2xl sm:text-3xl font-black text-blue-900 tabular-nums">60s</div>
+                    </div>
+                    <div class="bg-emerald-50 border border-emerald-200 px-4 py-2 rounded-2xl text-center min-w-[95px]">
+                        <div class="text-[11px] font-bold text-emerald-600 uppercase">Điểm đúng</div>
+                        <div id="stroop-score" class="text-2xl sm:text-3xl font-black text-emerald-700 tabular-nums">0</div>
+                    </div>
+                    <div class="bg-rose-50 border border-rose-200 px-4 py-2 rounded-2xl text-center min-w-[85px]">
+                        <div class="text-[11px] font-bold text-rose-600 uppercase">Sai</div>
+                        <div id="stroop-wrong" class="text-2xl sm:text-3xl font-black text-rose-600 tabular-nums">0</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Khu vực hiển thị trung tâm -->
+            <div class="flex-1 flex flex-col items-center justify-center my-2 relative">
+                <!-- Màn hình chờ trước khi bắt đầu -->
+                <div id="stroop-start-screen" class="text-center max-w-xl mx-auto p-4">
+                    <div class="w-16 h-16 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center text-3xl mx-auto mb-3 shadow-inner">
+                        <i class="fa-solid fa-eye"></i>
+                    </div>
+                    <h3 class="text-xl sm:text-2xl font-extrabold text-slate-800 mb-2">Luật chơi siêu đơn giản!</h3>
+                    <p class="text-slate-600 text-sm sm:text-base mb-5 leading-relaxed">
+                        Màn hình sẽ hiện tên một màu sắc nhưng được tô bằng màu khác (Ví dụ: chữ <strong class="text-blue-600 font-black">ĐỎ</strong> nhưng tô màu xanh dương).<br>
+                        Nhiệm vụ của bạn là bấm thật nhanh vào nút <strong class="text-orange-600">MÀU SẮC CỦA MỰC CHỮ</strong>, đừng để nghĩa của từ đánh lừa!
+                    </p>
+                    <button onclick="startStroopGame()" class="px-8 py-4 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-black text-lg sm:text-xl rounded-2xl shadow-lg shadow-blue-200 transition-transform active:scale-95 flex items-center gap-3 mx-auto">
+                        <i class="fa-solid fa-play"></i> BẮT ĐẦU THỬ THÁCH (60s)
+                    </button>
+                </div>
+
+                <!-- Khu vực đang chơi -->
+                <div id="stroop-play-screen" class="hidden w-full flex-col items-center justify-center">
+                    <div class="text-xs sm:text-sm font-bold text-slate-400 uppercase tracking-widest mb-2">Màu của chữ này là màu gì?</div>
+                    <div id="stroop-word-box" class="bg-slate-50 border-2 border-slate-200 rounded-3xl px-10 py-6 sm:py-8 mb-6 shadow-inner min-w-[280px] sm:min-w-[380px] text-center">
+                        <span id="stroop-word" class="text-5xl sm:text-7xl font-black tracking-wider">XANH LÁ</span>
+                    </div>
+
+                    <!-- 5 Nút bấm màu lớn -->
+                    <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 w-full max-w-4xl">
+                        <button onclick="checkStroopAnswer('RED')" class="py-4 px-3 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-black text-base sm:text-lg shadow-md active:scale-95 transition-all border-b-4 border-red-800">
+                            ĐỎ
+                        </button>
+                        <button onclick="checkStroopAnswer('BLUE')" class="py-4 px-3 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-black text-base sm:text-lg shadow-md active:scale-95 transition-all border-b-4 border-blue-800">
+                            XANH DƯƠNG
+                        </button>
+                        <button onclick="checkStroopAnswer('GREEN')" class="py-4 px-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-base sm:text-lg shadow-md active:scale-95 transition-all border-b-4 border-emerald-800">
+                            XANH LÁ
+                        </button>
+                        <button onclick="checkStroopAnswer('YELLOW')" class="py-4 px-3 rounded-2xl bg-amber-400 hover:bg-amber-500 text-slate-900 font-black text-base sm:text-lg shadow-md active:scale-95 transition-all border-b-4 border-amber-600">
+                            VÀNG
+                        </button>
+                        <button onclick="checkStroopAnswer('PURPLE')" class="col-span-2 sm:col-span-1 py-4 px-3 rounded-2xl bg-purple-600 hover:bg-purple-700 text-white font-black text-base sm:text-lg shadow-md active:scale-95 transition-all border-b-4 border-purple-800">
+                            TÍM
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Bảng tổng kết & Câu hỏi gợi mở sau trò chơi -->
+                <div id="stroop-end-screen" class="hidden w-full max-w-3xl bg-gradient-to-br from-blue-50 to-orange-50 border-2 border-blue-200 rounded-3xl p-5 sm:p-6 text-center shadow-lg">
+                    <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-orange-500 text-white font-bold text-sm mb-2">
+                        <i class="fa-solid fa-trophy"></i> HẾT GIỜ! TỔNG KẾT KẾT QUẢ
+                    </div>
+                    <div class="flex justify-center gap-6 my-3">
+                        <div class="bg-white px-6 py-3 rounded-2xl shadow-sm border border-emerald-100">
+                            <div class="text-xs font-bold text-slate-500">SỐ CÂU ĐÚNG</div>
+                            <div id="final-correct" class="text-4xl font-black text-emerald-600">0</div>
+                        </div>
+                        <div class="bg-white px-6 py-3 rounded-2xl shadow-sm border border-rose-100">
+                            <div class="text-xs font-bold text-slate-500">SỐ CÂU SAI</div>
+                            <div id="final-wrong" class="text-4xl font-black text-rose-600">0</div>
+                        </div>
+                        <div class="bg-white px-6 py-3 rounded-2xl shadow-sm border border-blue-100">
+                            <div class="text-xs font-bold text-slate-500">ĐỘ CHÍNH XÁC</div>
+                            <div id="final-accuracy" class="text-4xl font-black text-blue-600">0%</div>
+                        </div>
+                    </div>
+
+                    <!-- Câu hỏi gợi mở của GV -->
+                    <div class="bg-white rounded-2xl p-4 border-l-4 border-orange-500 text-left my-4 shadow-sm">
+                        <div class="text-xs font-extrabold text-orange-600 uppercase mb-1"><i class="fa-solid fa-comments mr-1"></i> Câu hỏi thảo luận nhanh:</div>
+                        <p class="text-base sm:text-lg font-bold text-slate-800">“Khi chơi trò chơi vừa rồi, em bị mất tập trung vì điều gì? Và lúc nào trong ngày em dễ mất tập trung nhất khi học?”</p>
+                    </div>
+
+                    <button onclick="startStroopGame()" class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-md transition-all active:scale-95 inline-flex items-center gap-2">
+                        <i class="fa-solid fa-rotate-right"></i> Chơi lại lượt mới
+                    </button>
+                </div>
+            </div>
+
+            <!-- Thanh chân trang điều khiển nhanh -->
+            <div class="flex justify-between items-center text-xs text-slate-400 pt-2 border-t border-slate-100">
+                <span>Mẹo: Có thể mời 2-3 học sinh lên bảng thi đấu tính điểm trực tiếp.</span>
+                <button onclick="resetStroopToIntro()" class="text-slate-500 hover:text-blue-600 font-semibold underline">Về màn hình hướng dẫn</button>
+            </div>
+        </section>
+
+
+        <!-- =====================================================================
+             HOẠT ĐỘNG 3: PHÂN LOẠI KẺ CẮP SỰ TẬP TRUNG (15 PHÚT)
+             ===================================================================== -->
+        <section id="game2" class="tab-content w-full max-w-6xl h-full flex-col justify-between bg-white rounded-3xl shadow-xl border border-blue-100 p-4 sm:p-5">
+            <!-- Header Hoạt động 3 -->
+            <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
+                <div>
+                    <span class="inline-block px-3 py-0.5 rounded-full bg-blue-100 text-blue-700 font-bold text-xs mb-1">HOẠT ĐỘNG 3 • KHÁM PHÁ NGUYÊN NHÂN (15')</span>
+                    <h2 class="text-lg sm:text-2xl font-black text-slate-800">Phân Loại “Kẻ Cắp Sự Tập Trung”</h2>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span id="sort-progress" class="px-3 py-1.5 rounded-xl bg-slate-100 font-bold text-xs sm:text-sm text-slate-700">Đã xếp: 0/8</span>
+                    <button onclick="resetSortingGame()" class="px-4 py-2 rounded-xl bg-orange-100 hover:bg-orange-200 text-orange-700 font-bold text-xs sm:text-sm transition-colors flex items-center gap-1.5">
+                        <i class="fa-solid fa-rotate-left"></i> Làm lại
+                    </button>
+                </div>
+            </div>
+
+            <!-- Hướng dẫn thao tác nhanh -->
+            <div class="bg-blue-50/70 border border-blue-100 rounded-xl px-3 py-1.5 text-xs sm:text-sm text-blue-800 flex items-center justify-between my-1.5">
+                <span><i class="fa-solid fa-hand-pointer text-orange-500 mr-1.5"></i><strong>Cách chơi:</strong> Kéo thả thẻ vào cột đúng <strong>HOẶC</strong> bấm chọn 1 thẻ rồi bấm vào cột tương ứng.</span>
+                <span id="sort-feedback" class="font-bold text-emerald-600 hidden"></span>
+            </div>
+
+            <!-- Khu vực 8 thẻ yếu tố cần phân loại -->
+            <div id="cards-pool" class="min-h-[88px] bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl p-2.5 flex flex-wrap items-center justify-center gap-2">
+                <!-- Các thẻ sẽ được JS render vào đây -->
+            </div>
+
+            <!-- 2 Cột phân loại: Nguyên nhân bên trong & Nguyên nhân bên ngoài -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 flex-1 mt-2.5 min-h-0">
+                <!-- Cột 1: Nguyên nhân bên trong -->
+                <div id="zone-internal" onclick="handleZoneClick('internal')" ondragover="allowDrop(event)" ondragleave="leaveDrop(event)" ondrop="handleDrop(event, 'internal')" class="drop-zone flex flex-col bg-gradient-to-b from-blue-50/80 to-white border-2 border-blue-300 rounded-2xl p-3 cursor-pointer">
+                    <div class="flex items-center justify-between border-b border-blue-200 pb-2 mb-2">
+                        <div class="flex items-center gap-2">
+                            <div class="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold">
+                                <i class="fa-solid fa-brain"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-extrabold text-blue-900 text-sm sm:text-base">NGUYÊN NHÂN BÊN TRONG</h3>
+                                <p class="text-[11px] text-blue-600">Cảm xúc, thói quen, sức khỏe, tâm lý</p>
+                            </div>
+                        </div>
+                        <span id="count-internal" class="w-7 h-7 rounded-full bg-blue-100 text-blue-800 font-black text-xs flex items-center justify-center">0</span>
+                    </div>
+                    <div id="list-internal" class="flex-1 flex flex-wrap content-start gap-2 overflow-y-auto p-1">
+                        <!-- Thẻ đúng sẽ nằm ở đây -->
+                    </div>
+                </div>
+
+                <!-- Cột 2: Nguyên nhân bên ngoài -->
+                <div id="zone-external" onclick="handleZoneClick('external')" ondragover="allowDrop(event)" ondragleave="leaveDrop(event)" ondrop="handleDrop(event, 'external')" class="drop-zone flex flex-col bg-gradient-to-b from-orange-50/80 to-white border-2 border-orange-300 rounded-2xl p-3 cursor-pointer">
+                    <div class="flex items-center justify-between border-b border-orange-200 pb-2 mb-2">
+                        <div class="flex items-center gap-2">
+                            <div class="w-8 h-8 rounded-lg bg-orange-500 text-white flex items-center justify-center font-bold">
+                                <i class="fa-solid fa-mobile-screen-button"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-extrabold text-orange-900 text-sm sm:text-base">NGUYÊN NHÂN BÊN NGOÀI</h3>
+                                <p class="text-[11px] text-orange-600">Thiết bị, môi trường, mạng xã hội, bạn bè</p>
+                            </div>
+                        </div>
+                        <span id="count-external" class="w-7 h-7 rounded-full bg-orange-100 text-orange-800 font-black text-xs flex items-center justify-center">0</span>
+                    </div>
+                    <div id="list-external" class="flex-1 flex flex-wrap content-start gap-2 overflow-y-auto p-1">
+                        <!-- Thẻ đúng sẽ nằm ở đây -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- =====================================================================
+             HOẠT ĐỘNG 4: VÒNG QUAY TÌNH HUỐNG & ĐỒNG HỒ POMODORO (30 PHÚT)
+             ===================================================================== -->
+        <section id="game3" class="tab-content w-full max-w-6xl h-full flex-col justify-between bg-white rounded-3xl shadow-xl border border-blue-100 p-4 sm:p-5">
+            <!-- Header Hoạt động 4 -->
+            <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
+                <div>
+                    <span class="inline-block px-3 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-bold text-xs mb-1">HOẠT ĐỘNG 4 • THỰC HÀNH KỸ NĂNG (30')</span>
+                    <h2 class="text-lg sm:text-2xl font-black text-slate-800">Thực Hành Xử Lý Tình Huống & Kỹ Thuật Pomodoro</h2>
+                </div>
+                <div class="text-xs font-semibold text-slate-500 bg-slate-100 px-3 py-1.5 rounded-xl">
+                    Kỹ thuật: <span class="text-blue-600 font-bold">Pomodoro</span> • <span class="text-orange-600 font-bold">Quy tắc 2 phút</span> • <span class="text-emerald-600 font-bold">Cất điện thoại</span>
+                </div>
+            </div>
+
+            <!-- Chia đôi 2 công cụ trên cùng 1 màn hình 16:9 -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 flex-1 mt-3 min-h-0">
+                
+                <!-- PHẦN A (7 CỘT): VÒNG QUAY CHỌN TÌNH HUỐNG ĐÓNG VAI -->
+                <div class="lg:col-span-7 bg-gradient-to-br from-blue-50 to-indigo-50/50 border border-blue-200 rounded-2xl p-4 flex flex-col justify-between">
+                    <div class="flex items-center justify-between">
+                        <h3 class="font-extrabold text-blue-900 text-base sm:text-lg flex items-center gap-2">
+                            <i class="fa-solid fa-masks-theater text-blue-600"></i> Vòng Quay Tình Huống Nhóm
+                        </h3>
+                        <button onclick="resetSituations()" class="text-xs font-bold text-blue-600 hover:underline">Đặt lại 4 tình huống</button>
+                    </div>
+
+                    <!-- Vòng quay trực quan + Kết quả -->
+                    <div class="flex flex-col sm:flex-row items-center gap-4 my-auto py-2">
+                        <!-- Vòng quay SVG -->
+                        <div class="relative w-44 h-44 sm:w-48 sm:h-48 shrink-0">
+                            <!-- Kim chỉ -->
+                            <div class="absolute -top-2 left-1/2 -translate-x-1/2 z-10 text-orange-600 text-2xl drop-shadow">
+                                <i class="fa-solid fa-caret-down"></i>
+                            </div>
+                            <svg id="wheel-svg" viewBox="0 0 200 200" class="w-full h-full rounded-full shadow-lg border-4 border-white transition-transform duration-[3000ms] ease-out">
+                                <!-- 4 miếng bánh 90 độ -->
+                                <path d="M100,100 L100,0 A100,100 0 0,1 200,100 Z" fill="#2563eb"/>
+                                <path d="M100,100 L200,100 A100,100 0 0,1 100,200 Z" fill="#f97316"/>
+                                <path d="M100,100 L100,200 A100,100 0 0,1 0,100 Z" fill="#0ea5e9"/>
+                                <path d="M100,100 L0,100 A100,100 0 0,1 100,0 Z" fill="#f59e0b"/>
+                                <!-- Nhãn số -->
+                                <text x="142" y="62" fill="white" font-weight="900" font-size="18" text-anchor="middle">TH 1</text>
+                                <text x="142" y="148" fill="white" font-weight="900" font-size="18" text-anchor="middle">TH 2</text>
+                                <text x="58" y="148" fill="white" font-weight="900" font-size="18" text-anchor="middle">TH 3</text>
+                                <text x="58" y="62" fill="white" font-weight="900" font-size="18" text-anchor="middle">TH 4</text>
+                                <circle cx="100" cy="100" r="18" fill="white"/>
+                                <circle cx="100" cy="100" r="8" fill="#1e3a8a"/>
+                            </svg>
+                        </div>
+
+                        <!-- Khung hiển thị chi tiết tình huống được chọn -->
+                        <div class="flex-1 w-full bg-white rounded-2xl p-4 border border-blue-100 shadow-sm flex flex-col justify-between min-h-[165px]">
+                            <div>
+                                <div id="situation-badge" class="inline-block px-2.5 py-0.5 rounded-md bg-slate-100 text-slate-600 font-bold text-xs mb-1.5">
+                                    Sẵn sàng quay
+                                </div>
+                                <h4 id="situation-title" class="font-extrabold text-slate-800 text-base sm:text-lg mb-1">
+                                    Bấm nút "Quay tình huống" để chia nhiệm vụ!
+                                </h4>
+                                <p id="situation-desc" class="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                                    Mỗi nhóm sẽ đóng vai trong 3-4 phút: chỉ rõ nguyên nhân gây mất tập trung và đề xuất ít nhất 2 giải pháp khả thi.
+                                </p>
+                            </div>
+                            <div class="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between">
+                                <span id="assigned-count" class="text-xs font-semibold text-slate-400">Đã chọn: 0/4 tình huống</span>
+                                <button onclick="spinWheel()" id="spin-btn" class="px-5 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-extrabold text-sm rounded-xl shadow-md active:scale-95 transition-all flex items-center gap-2">
+                                    <i class="fa-solid fa-arrows-spin"></i> QUAY TÌNH HUỐNG
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Các nút chọn nhanh trực tiếp 4 tình huống (dự phòng khi GV muốn mở nhanh) -->
+                    <div class="grid grid-cols-4 gap-2 pt-1">
+                        <button onclick="selectSituationDirect(0)" class="sit-quick-btn py-1.5 px-2 rounded-lg bg-white hover:bg-blue-100 border border-blue-200 text-xs font-bold text-blue-800 transition-colors">TH 1: Điện thoại</button>
+                        <button onclick="selectSituationDirect(1)" class="sit-quick-btn py-1.5 px-2 rounded-lg bg-white hover:bg-blue-100 border border-blue-200 text-xs font-bold text-blue-800 transition-colors">TH 2: Nhà ồn ào</button>
+                        <button onclick="selectSituationDirect(2)" class="sit-quick-btn py-1.5 px-2 rounded-lg bg-white hover:bg-blue-100 border border-blue-200 text-xs font-bold text-blue-800 transition-colors">TH 3: Thức khuya</button>
+                        <button onclick="selectSituationDirect(3)" class="sit-quick-btn py-1.5 px-2 rounded-lg bg-white hover:bg-blue-100 border border-blue-200 text-xs font-bold text-blue-800 transition-colors">TH 4: Quá tải bài</button>
+                    </div>
+                </div>
+
+                <!-- PHẦN B (5 CỘT): ĐỒNG HỒ ĐẾM NGƯỢC POMODORO -->
+                <div class="lg:col-span-5 bg-gradient-to-br from-orange-50 to-amber-50/50 border border-orange-200 rounded-2xl p-4 flex flex-col justify-between">
+                    <div class="flex items-center justify-between">
+                        <h3 class="font-extrabold text-orange-900 text-base sm:text-lg flex items-center gap-2">
+                            <i class="fa-solid fa-stopwatch text-orange-500"></i> Đồng Hồ Pomodoro
+                        </h3>
+                        <span id="pomo-status-badge" class="px-2.5 py-0.5 rounded-full bg-orange-100 text-orange-700 font-bold text-xs">Tập trung</span>
+                    </div>
+
+                    <!-- Chọn chế độ nhanh -->
+                    <div class="grid grid-cols-3 gap-1.5 bg-white p-1.5 rounded-xl border border-orange-100 my-2">
+                        <button onclick="setPomodoroMode(25, 'Tập trung sâu (25p)', 'bg-orange-100 text-orange-700')" id="pomo-mode-25" class="pomo-mode-btn py-1.5 px-2 rounded-lg font-bold text-xs bg-orange-500 text-white shadow-sm transition-all">
+                            25p Học
+                        </button>
+                        <button onclick="setPomodoroMode(5, 'Nghỉ giải lao (5p)', 'bg-emerald-100 text-emerald-700')" id="pomo-mode-5" class="pomo-mode-btn py-1.5 px-2 rounded-lg font-bold text-xs text-slate-600 hover:bg-slate-100 transition-all">
+                            5p Nghỉ
+                        </button>
+                        <button onclick="setPomodoroMode(1, 'Trải nghiệm nhanh (1p)', 'bg-blue-100 text-blue-700')" id="pomo-mode-1" class="pomo-mode-btn py-1.5 px-2 rounded-lg font-bold text-xs text-slate-600 hover:bg-slate-100 transition-all">
+                            1p Thử trên lớp
+                        </button>
+                    </div>
+
+                    <!-- Mặt đồng hồ số lớn -->
+                    <div class="bg-white rounded-2xl border-2 border-orange-200 py-4 px-4 text-center shadow-inner my-auto relative overflow-hidden">
+                        <div id="pomo-display" class="text-5xl sm:text-6xl font-black text-slate-800 tracking-wider tabular-nums">25:00</div>
+                        <p id="pomo-hint" class="text-xs text-slate-500 mt-1 font-medium">Quy tắc: Tuyệt đối không chạm điện thoại cho đến khi hết giờ!</p>
+                        <!-- Thanh tiến trình dưới đáy đồng hồ -->
+                        <div class="w-full h-1.5 bg-slate-100 mt-3 rounded-full overflow-hidden">
+                            <div id="pomo-progress-bar" class="h-full bg-gradient-to-r from-orange-500 to-blue-600 w-full transition-all duration-500"></div>
+                        </div>
+                    </div>
+
+                    <!-- Nút điều khiển đồng hồ -->
+                    <div class="grid grid-cols-2 gap-2.5 mt-3">
+                        <button onclick="togglePomodoro()" id="pomo-start-btn" class="py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-sm shadow-md active:scale-95 transition-all flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-play"></i> Bắt đầu
+                        </button>
+                        <button onclick="resetPomodoro()" class="py-3 px-4 rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 font-bold text-sm transition-all flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-rotate-right"></i> Đặt lại
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+    </main>
+
+    <!-- HỘP THÔNG BÁO HOÀN THÀNH HOẠT ĐỘNG 2 (Thay thế alert) -->
+    <div id="congrats-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 text-center shadow-2xl border-2 border-orange-200 animate-pop">
+            <div class="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-3xl mx-auto mb-3">
+                <i class="fa-solid fa-circle-check"></i>
+            </div>
+            <h3 class="text-2xl font-black text-slate-800 mb-2">Xuất sắc! Hoàn thành 8/8 thẻ</h3>
+            <p class="text-sm text-slate-600 mb-5 leading-relaxed">
+                Lớp mình đã nhận diện chính xác đâu là <strong>nguyên nhân bên trong</strong> (tự thân) và <strong>nguyên nhân bên ngoài</strong> (môi trường) gây xao nhãng khi học!
+            </p>
+            <button onclick="closeCongratsModal()" class="w-full py-3 bg-gradient-to-r from-blue-600 to-orange-500 text-white font-extrabold rounded-xl shadow-md hover:opacity-95 transition-opacity">
+                Tiếp tục bài học
+            </button>
+        </div>
+    </div>
+
+    <script>
+        /* =========================================================================
+           1. HỆ THỐNG ÂM THANH WEB AUDIO API (Không cần file âm thanh ngoài)
+           ========================================================================= */
+        let isMuted = false;
+        let audioCtx = null;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function toggleMute() {
+            isMuted = !isMuted;
+            const icon = document.getElementById('mute-icon');
+            icon.className = isMuted ? 'fa-solid fa-volume-xmark text-rose-500 text-base' : 'fa-solid fa-volume-high text-base';
+        }
+
+        function playTone(type) {
+            if (isMuted) return;
+            try {
+                initAudio();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                const now = audioCtx.currentTime;
+
+                if (type === 'correct') {
+                    // Tiếng ting vui tai
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(587.33, now); // D5
+                    osc.frequency.exponentialRampToValueAtTime(880, now + 0.12); // A5
+                    gain.gain.setValueAtTime(0.25, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+                    osc.start(now);
+                    osc.stop(now + 0.25);
+                } else if (type === 'wrong') {
+                    // Tiếng trầm báo lỗi nhẹ
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(180, now);
+                    osc.frequency.linearRampToValueAtTime(130, now + 0.2);
+                    gain.gain.setValueAtTime(0.25, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+                    osc.start(now);
+                    osc.stop(now + 0.25);
+                } else if (type === 'tick') {
+                    // Tiếng tạch nhẹ khi quay vòng quay
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(600, now);
+                    gain.gain.setValueAtTime(0.08, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+                    osc.start(now);
+                    osc.stop(now + 0.04);
+                } else if (type === 'alarm') {
+                    // Chuông báo hết giờ Pomodoro nhẹ nhàng (3 nốt hợp âm)
+                    [523.25, 659.25, 783.99, 1046.50].forEach((freq, idx) => {
+                        const o = audioCtx.createOscillator();
+                        const g = audioCtx.createGain();
+                        o.connect(g);
+                        g.connect(audioCtx.destination);
+                        o.type = 'sine';
+                        o.frequency.setValueAtTime(freq, now + idx * 0.18);
+                        g.gain.setValueAtTime(0.2, now + idx * 0.18);
+                        g.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.18 + 0.8);
+                        o.start(now + idx * 0.18);
+                        o.stop(now + idx * 0.18 + 0.8);
+                    });
+                }
+            } catch (e) {
+                console.warn('Audio error:', e);
+            }
+        }
+
+        /* =========================================================================
+           2. ĐIỀU HƯỚNG GIỮA 3 HOẠT ĐỘNG
+           ========================================================================= */
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('bg-blue-600', 'text-white', 'shadow-sm');
+                btn.classList.add('text-slate-600', 'hover:bg-white');
+                const badge = btn.querySelector('span:first-child');
+                badge.classList.remove('bg-white/20', 'text-white');
+                badge.classList.add('bg-slate-200', 'text-slate-700');
+            });
+
+            const activeBtn = document.getElementById('nav-' + tabId);
+            activeBtn.classList.add('bg-blue-600', 'text-white', 'shadow-sm');
+            activeBtn.classList.remove('text-slate-600', 'hover:bg-white');
+            const activeBadge = activeBtn.querySelector('span:first-child');
+            activeBadge.classList.add('bg-white/20', 'text-white');
+            activeBadge.classList.remove('bg-slate-200', 'text-slate-700');
+        }
+
+        /* =========================================================================
+           3. TRÒ CHƠI 1: THỬ THÁCH STROOP - AI NHANH MẮT HƠN
+           ========================================================================= */
+        const STROOP_COLORS = [
+            { key: 'RED', label: 'ĐỎ', hex: '#dc2626' },
+            { key: 'BLUE', label: 'XANH DƯƠNG', hex: '#2563eb' },
+            { key: 'GREEN', label: 'XANH LÁ', hex: '#059669' },
+            { key: 'YELLOW', label: 'VÀNG', hex: '#eab308' },
+            { key: 'PURPLE', label: 'TÍM', hex: '#9333ea' }
+        ];
+
+        let stroopScore = 0;
+        let stroopWrong = 0;
+        let stroopTimeLeft = 60;
+        let stroopTimerInterval = null;
+        let currentInkColor = '';
+        let isStroopPlaying = false;
+
+        function startStroopGame() {
+            initAudio();
+            stroopScore = 0;
+            stroopWrong = 0;
+            stroopTimeLeft = 60;
+            isStroopPlaying = true;
+
+            document.getElementById('stroop-score').textContent = '0';
+            document.getElementById('stroop-wrong').textContent = '0';
+            document.getElementById('stroop-timer').textContent = '60s';
+            document.getElementById('stroop-timer').classList.remove('text-rose-600');
+
+            document.getElementById('stroop-start-screen').classList.add('hidden');
+            document.getElementById('stroop-end-screen').classList.add('hidden');
+            document.getElementById('stroop-play-screen').classList.remove('hidden');
+            document.getElementById('stroop-play-screen').classList.add('flex');
+
+            generateNextStroopWord();
+
+            clearInterval(stroopTimerInterval);
+            stroopTimerInterval = setInterval(() => {
+                stroopTimeLeft--;
+                const timerEl = document.getElementById('stroop-timer');
+                timerEl.textContent = stroopTimeLeft + 's';
+                if (stroopTimeLeft <= 10) {
+                    timerEl.classList.add('text-rose-600');
+                }
+                if (stroopTimeLeft <= 0) {
+                    endStroopGame();
+                }
+            }, 1000);
+        }
+
+        function generateNextStroopWord() {
+            // Chọn ngẫu nhiên nghĩa của từ
+            const wordObj = STROOP_COLORS[Math.floor(Math.random() * STROOP_COLORS.length)];
+            // Chọn màu mực KHÁC với nghĩa của từ để tạo hiệu ứng nhiễu Stroop
+            const otherColors = STROOP_COLORS.filter(c => c.key !== wordObj.key);
+            const inkObj = otherColors[Math.floor(Math.random() * otherColors.length)];
+
+            currentInkColor = inkObj.key;
+            const wordEl = document.getElementById('stroop-word');
+            wordEl.textContent = wordObj.label;
+            wordEl.style.color = inkObj.hex;
+
+            const box = document.getElementById('stroop-word-box');
+            box.classList.remove('animate-pop', 'animate-shake');
+            void box.offsetWidth; // trigger reflow
+            box.classList.add('animate-pop');
+        }
+
+        function checkStroopAnswer(selectedColorKey) {
+            if (!isStroopPlaying) return;
+            const box = document.getElementById('stroop-word-box');
+
+            if (selectedColorKey === currentInkColor) {
+                stroopScore++;
+                document.getElementById('stroop-score').textContent = stroopScore;
+                playTone('correct');
+                generateNextStroopWord();
+            } else {
+                stroopWrong++;
+                document.getElementById('stroop-wrong').textContent = stroopWrong;
+                playTone('wrong');
+                box.classList.remove('animate-shake');
+                void box.offsetWidth;
+                box.classList.add('animate-shake');
+            }
+        }
+
+        function endStroopGame() {
+            isStroopPlaying = false;
+            clearInterval(stroopTimerInterval);
+            playTone('alarm');
+
+            document.getElementById('stroop-play-screen').classList.add('hidden');
+            document.getElementById('stroop-play-screen').classList.remove('flex');
+            document.getElementById('stroop-end-screen').classList.remove('hidden');
+
+            document.getElementById('final-correct').textContent = stroopScore;
+            document.getElementById('final-wrong').textContent = stroopWrong;
+            const total = stroopScore + stroopWrong;
+            const acc = total > 0 ? Math.round((stroopScore / total) * 100) : 0;
+            document.getElementById('final-accuracy').textContent = acc + '%';
+        }
+
+        function resetStroopToIntro() {
+            isStroopPlaying = false;
+            clearInterval(stroopTimerInterval);
+            document.getElementById('stroop-play-screen').classList.add('hidden');
+            document.getElementById('stroop-play-screen').classList.remove('flex');
+            document.getElementById('stroop-end-screen').classList.add('hidden');
+            document.getElementById('stroop-start-screen').classList.remove('hidden');
+        }
+
+        /* =========================================================================
+           4. TRÒ CHƠI 2: PHÂN LOẠI KẺ CẮP SỰ TẬP TRUNG (HOẠT ĐỘNG 3)
+           ========================================================================= */
+        const DISTRACTION_ITEMS = [
+            { id: 'd1', text: 'Điện thoại thông báo liên tục', type: 'external', icon: 'fa-bell' },
+            { id: 'd2', text: 'Áp lực điểm số', type: 'internal', icon: 'fa-weight-hanging' },
+            { id: 'd3', text: 'Tiếng ồn xung quanh', type: 'external', icon: 'fa-volume-high' },
+            { id: 'd4', text: 'Thiếu ngủ / mệt mỏi', type: 'internal', icon: 'fa-bed' },
+            { id: 'd5', text: 'Bạn bè rủ rê nói chuyện', type: 'external', icon: 'fa-user-group' },
+            { id: 'd6', text: 'Lo âu / mất tự tin', type: 'internal', icon: 'fa-face-frown' },
+            { id: 'd7', text: 'Mạng xã hội / TikTok', type: 'external', icon: 'fa-hashtag' },
+            { id: 'd8', text: 'Không gian học bừa bộn', type: 'external', icon: 'fa-layer-group' }
+        ];
+
+        let selectedCardId = null;
+        let sortedCount = 0;
+
+        function initSortingGame() {
+            const pool = document.getElementById('cards-pool');
+            const listInt = document.getElementById('list-internal');
+            const listExt = document.getElementById('list-external');
+
+            pool.innerHTML = '';
+            listInt.innerHTML = '';
+            listExt.innerHTML = '';
+            selectedCardId = null;
+            sortedCount = 0;
+            updateSortCounters();
+
+            // Xáo trộn thứ tự thẻ
+            const shuffled = [...DISTRACTION_ITEMS].sort(() => Math.random() - 0.5);
+
+            shuffled.forEach(item => {
+                const card = document.createElement('div');
+                card.id = item.id;
+                card.draggable = true;
+                card.dataset.type = item.type;
+                card.className = 'distraction-card px-3.5 py-2 bg-white border-2 border-slate-200 hover:border-blue-500 rounded-xl shadow-sm font-bold text-xs sm:text-sm text-slate-700 cursor-grab active:cursor-grabbing transition-all flex items-center gap-2 select-none';
+                card.innerHTML = `<i class="fa-solid ${item.icon} text-orange-500"></i> <span>${item.text}</span>`;
+
+                // Sự kiện kéo thả
+                card.addEventListener('dragstart', (e) => {
+                    e.dataTransfer.setData('text/plain', item.id);
+                    selectCardForTap(item.id);
+                });
+
+                // Sự kiện bấm chọn (hỗ trợ màn hình cảm ứng / bảng tương tác)
+                card.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    selectCardForTap(item.id);
+                });
+
+                pool.appendChild(card);
+            });
+        }
+
+        function selectCardForTap(id) {
+            const card = document.getElementById(id);
+            if (!card || card.dataset.sorted === 'true') return;
+
+            document.querySelectorAll('.distraction-card').forEach(c => {
+                c.classList.remove('ring-4', 'ring-blue-400', 'border-blue-600', 'bg-blue-50');
+            });
+
+            if (selectedCardId === id) {
+                selectedCardId = null;
+            } else {
+                selectedCardId = id;
+                card.classList.add('ring-4', 'ring-blue-400', 'border-blue-600', 'bg-blue-50');
+            }
+        }
+
+        function allowDrop(e) {
+            e.preventDefault();
+            e.currentTarget.classList.add('drag-over');
+        }
+
+        function leaveDrop(e) {
+            e.currentTarget.classList.remove('drag-over');
+        }
+
+        function handleDrop(e, targetType) {
+            e.preventDefault();
+            e.currentTarget.classList.remove('drag-over');
+            const cardId = e.dataTransfer.getData('text/plain');
+            if (cardId) {
+                evaluateCardPlacement(cardId, targetType);
+            }
+        }
+
+        function handleZoneClick(targetType) {
+            if (selectedCardId) {
+                evaluateCardPlacement(selectedCardId, targetType);
+            }
+        }
+
+        function evaluateCardPlacement(cardId, targetType) {
+            const card = document.getElementById(cardId);
+            if (!card || card.dataset.sorted === 'true') return;
+
+            const correctType = card.dataset.type;
+            const feedbackEl = document.getElementById('sort-feedback');
+
+            if (correctType === targetType) {
+                // Đúng!
+                playTone('correct');
+                card.dataset.sorted = 'true';
+                card.draggable = false;
+                card.classList.remove('ring-4', 'ring-blue-400', 'border-blue-600', 'bg-blue-50', 'border-slate-200', 'cursor-grab');
+
+                if (targetType === 'internal') {
+                    card.classList.add('bg-blue-600', 'text-white', 'border-blue-700', 'animate-pop');
+                    card.querySelector('i').className = 'fa-solid fa-check text-blue-200';
+                    document.getElementById('list-internal').appendChild(card);
+                } else {
+                    card.classList.add('bg-orange-500', 'text-white', 'border-orange-600', 'animate-pop');
+                    card.querySelector('i').className = 'fa-solid fa-check text-orange-100';
+                    document.getElementById('list-external').appendChild(card);
+                }
+
+                selectedCardId = null;
+                sortedCount++;
+                updateSortCounters();
+
+                feedbackEl.textContent = 'Chính xác! +1';
+                feedbackEl.className = 'font-bold text-emerald-600';
+                feedbackEl.classList.remove('hidden');
+
+                if (sortedCount === DISTRACTION_ITEMS.length) {
+                    setTimeout(() => {
+                        triggerConfetti();
+                        document.getElementById('congrats-modal').classList.remove('hidden');
+                        document.getElementById('congrats-modal').classList.add('flex');
+                    }, 300);
+                }
+            } else {
+                // Sai! Rung thẻ và báo nhắc
+                playTone('wrong');
+                card.classList.remove('animate-shake');
+                void card.offsetWidth;
+                card.classList.add('animate-shake', 'border-rose-500', 'bg-rose-50');
+                setTimeout(() => {
+                    card.classList.remove('border-rose-500', 'bg-rose-50');
+                }, 600);
+
+                feedbackEl.textContent = 'Chưa đúng cột rồi, thử lại nhé!';
+                feedbackEl.className = 'font-bold text-rose-600';
+                feedbackEl.classList.remove('hidden');
+            }
+        }
+
+        function updateSortCounters() {
+            document.getElementById('sort-progress').textContent = `Đã xếp: ${sortedCount}/${DISTRACTION_ITEMS.length}`;
+            document.getElementById('count-internal').textContent = document.getElementById('list-internal').children.length;
+            document.getElementById('count-external').textContent = document.getElementById('list-external').children.length;
+        }
+
+        function resetSortingGame() {
+            document.getElementById('sort-feedback').classList.add('hidden');
+            initSortingGame();
+        }
+
+        function closeCongratsModal() {
+            document.getElementById('congrats-modal').classList.add('hidden');
+            document.getElementById('congrats-modal').classList.remove('flex');
+        }
+
+        function triggerConfetti() {
+            if (typeof confetti === 'function') {
+                confetti({
+                    particleCount: 90,
+                    spread: 70,
+                    origin: { y: 0.6 }
+                });
+            }
+        }
+
+        /* =========================================================================
+           5. HOẠT ĐỘNG 4A: VÒNG QUAY TÌNH HUỐNG THỰC HÀNH (PHỤ LỤC 3)
+           ========================================================================= */
+        const SITUATIONS = [
+            {
+                num: 1,
+                title: 'Tình huống 1: Cầm điện thoại lướt mạng',
+                desc: 'Em ngồi vào bàn học nhưng cứ cầm điện thoại lướt mạng xã hội, 1 tiếng trôi qua mà chưa làm được bài tập nào.'
+            },
+            {
+                num: 2,
+                title: 'Tình huống 2: Không gian học ở nhà ồn ào',
+                desc: 'Em ngồi học ở nhà nhưng tiếng tivi, tiếng nói chuyện của gia đình và hàng xóm rất ồn ào khiến em không thể tập trung.'
+            },
+            {
+                num: 3,
+                title: 'Tình huống 3: Thức khuya, sáng buồn ngủ',
+                desc: 'Tối qua em thức khuya xem phim/lướt web, sáng hôm sau cơ thể mệt mỏi, lên lớp gật gù buồn ngủ và không nghe được bài.'
+            },
+            {
+                num: 4,
+                title: 'Tình huống 4: Quá nhiều bài tập & kiểm tra',
+                desc: 'Em có quá nhiều bài tập các môn và lịch kiểm tra dồn dập cùng lúc, cảm thấy rối bời, lo lắng và không biết bắt đầu từ đâu.'
+            }
+        ];
+
+        let usedSituations = new Set();
+        let currentRotation = 0;
+        let isSpinning = false;
+
+        function spinWheel() {
+            if (isSpinning) return;
+            initAudio();
+
+            // Tìm các tình huống chưa quay trúng
+            let availableIndices = [0, 1, 2, 3].filter(i => !usedSituations.has(i));
+            if (availableIndices.length === 0) {
+                usedSituations.clear();
+                availableIndices = [0, 1, 2, 3];
+            }
+
+            const chosenIndex = availableIndices[Math.floor(Math.random() * availableIndices.length)];
+            usedSituations.add(chosenIndex);
+
+            isSpinning = true;
+            const spinBtn = document.getElementById('spin-btn');
+            spinBtn.disabled = true;
+            spinBtn.classList.add('opacity-60');
+
+            // Góc dừng tương ứng với từng miếng bánh trên SVG (kim chỉ ở đỉnh 12h = 0 độ)
+            // TH1 (0-90 deg) -> cần xoay ngược 45 deg -> 315 deg
+            // TH2 (90-180 deg) -> 225 deg
+            // TH3 (180-270 deg) -> 135 deg
+            // TH4 (270-360 deg) -> 45 deg
+            const targetAngles = [315, 225, 135, 45];
+            const extraSpins = 360 * 5; // Quay 5 vòng cho kịch tính
+            const baseMod = currentRotation % 360;
+            const delta = (targetAngles[chosenIndex] - baseMod + 360) % 360;
+            currentRotation += extraSpins + delta;
+
+            const wheel = document.getElementById('wheel-svg');
+            wheel.style.transform = `rotate(${currentRotation}deg)`;
+
+            // Hiệu ứng âm thanh tạch tạch
+            let ticks = 0;
+            const tickInterval = setInterval(() => {
+                playTone('tick');
+                ticks++;
+                if (ticks > 18) clearInterval(tickInterval);
+            }, 140);
+
+            setTimeout(() => {
+                isSpinning = false;
+                spinBtn.disabled = false;
+                spinBtn.classList.remove('opacity-60');
+                playTone('correct');
+                displaySituation(chosenIndex);
+            }, 3050);
+        }
+
+        function selectSituationDirect(index) {
+            if (isSpinning) return;
+            usedSituations.add(index);
+            displaySituation(index);
+        }
+
+        function displaySituation(index) {
+            const sit = SITUATIONS[index];
+            const badge = document.getElementById('situation-badge');
+            badge.textContent = `NHIỆM VỤ ĐÓNG VAI • TÌNH HUỐNG ${sit.num}`;
+            badge.className = 'inline-block px-2.5 py-0.5 rounded-md bg-orange-500 text-white font-bold text-xs mb-1.5 animate-pop';
+
+            document.getElementById('situation-title').textContent = sit.title;
+            document.getElementById('situation-desc').textContent = sit.desc;
+            document.getElementById('assigned-count').textContent = `Đã chọn: ${usedSituations.size}/4 tình huống`;
+        }
+
+        function resetSituations() {
+            usedSituations.clear();
+            document.getElementById('situation-badge').textContent = 'Sẵn sàng quay';
+            document.getElementById('situation-badge').className = 'inline-block px-2.5 py-0.5 rounded-md bg-slate-100 text-slate-600 font-bold text-xs mb-1.5';
+            document.getElementById('situation-title').textContent = 'Bấm nút "Quay tình huống" để chia nhiệm vụ!';
+            document.getElementById('situation-desc').textContent = 'Mỗi nhóm sẽ đóng vai trong 3-4 phút: chỉ rõ nguyên nhân gây mất tập trung và đề xuất ít nhất 2 giải pháp khả thi.';
+            document.getElementById('assigned-count').textContent = 'Đã chọn: 0/4 tình huống';
+        }
+
+        /* =========================================================================
+           6. HOẠT ĐỘNG 4B: ĐỒNG HỒ POMODORO LINH HOẠT
+           ========================================================================= */
+        let pomoTotalSeconds = 25 * 60;
+        let pomoRemainingSeconds = 25 * 60;
+        let pomoInterval = null;
+        let isPomoRunning = false;
+
+        function setPomodoroMode(minutes, label, badgeClasses) {
+            pausePomodoro();
+            pomoTotalSeconds = minutes * 60;
+            pomoRemainingSeconds = pomoTotalSeconds;
+
+            const badge = document.getElementById('pomo-status-badge');
+            badge.textContent = label;
+            badge.className = `px-2.5 py-0.5 rounded-full font-bold text-xs ${badgeClasses}`;
+
+            // Cập nhật giao diện nút chọn chế độ
+            document.querySelectorAll('.pomo-mode-btn').forEach(btn => {
+                btn.className = 'pomo-mode-btn py-1.5 px-2 rounded-lg font-bold text-xs text-slate-600 hover:bg-slate-100 transition-all';
+            });
+            const activeModeBtn = document.getElementById('pomo-mode-' + minutes);
+            activeModeBtn.className = 'pomo-mode-btn py-1.5 px-2 rounded-lg font-bold text-xs bg-orange-500 text-white shadow-sm transition-all';
+
+            const hint = document.getElementById('pomo-hint');
+            if (minutes === 5) {
+                hint.textContent = 'Thư giãn mắt, hít thở sâu, uống một ngụm nước (không lướt mạng xã hội).';
+            } else if (minutes === 1) {
+                hint.textContent = 'Chế độ thử nghiệm nhanh 1 phút ngay tại lớp học!';
+            } else {
+                hint.textContent = 'Quy tắc: Tuyệt đối không chạm điện thoại cho đến khi hết giờ!';
+            }
+
+            updatePomodoroUI();
+        }
+
+        function togglePomodoro() {
+            initAudio();
+            if (isPomoRunning) {
+                pausePomodoro();
+            } else {
+                startPomodoro();
+            }
+        }
+
+        function startPomodoro() {
+            if (pomoRemainingSeconds <= 0) {
+                pomoRemainingSeconds = pomoTotalSeconds;
+            }
+            isPomoRunning = true;
+            const btn = document.getElementById('pomo-start-btn');
+            btn.innerHTML = '<i class="fa-solid fa-pause"></i> Tạm dừng';
+            btn.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+            btn.classList.add('bg-amber-500', 'hover:bg-amber-600');
+
+            clearInterval(pomoInterval);
+            pomoInterval = setInterval(() => {
+                pomoRemainingSeconds--;
+                updatePomodoroUI();
+
+                if (pomoRemainingSeconds <= 0) {
+                    pausePomodoro();
+                    playTone('alarm');
+                    triggerConfetti();
+                    document.getElementById('pomo-hint').textContent = '🎉 Hết chu kỳ! Bạn đã hoàn thành xuất sắc!';
+                }
+            }, 1000);
+        }
+
+        function pausePomodoro() {
+            isPomoRunning = false;
+            clearInterval(pomoInterval);
+            const btn = document.getElementById('pomo-start-btn');
+            btn.innerHTML = '<i class="fa-solid fa-play"></i> Tiếp tục';
+            btn.classList.remove('bg-amber-500', 'hover:bg-amber-600');
+            btn.classList.add('bg-blue-600', 'hover:bg-blue-700');
+        }
+
+        function resetPomodoro() {
+            pausePomodoro();
+            pomoRemainingSeconds = pomoTotalSeconds;
+            document.getElementById('pomo-start-btn').innerHTML = '<i class="fa-solid fa-play"></i> Bắt đầu';
+            updatePomodoroUI();
+        }
+
+        function updatePomodoroUI() {
+            const mins = Math.floor(pomoRemainingSeconds / 60);
+            const secs = pomoRemainingSeconds % 60;
+            const formatted = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+            document.getElementById('pomo-display').textContent = formatted;
+
+            const pct = (pomoRemainingSeconds / pomoTotalSeconds) * 100;
+            document.getElementById('pomo-progress-bar').style.width = pct + '%';
+        }
+
+        // Khởi tạo Trò chơi 2 ngay khi tải trang
+        window.onload = function() {
+            initSortingGame();
+        };
+    </script>
+</body>
+</html>
